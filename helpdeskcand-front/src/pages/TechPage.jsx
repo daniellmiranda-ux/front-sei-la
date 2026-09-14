@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ticketService } from '../services/ticketService';
 
 export default function TechPage() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user')) || {};
 
-    const [tickets, setTickets] = useState(() => {
-        return JSON.parse(localStorage.getItem('app_tickets') || '[]');
-    });
+    const [tickets, setTickets] = useState([]);
+    const [error, setError] = useState('');
 
     const [activeFilter, setActiveFilter] = useState('ABERTO');
     const [selectedTicket, setSelectedTicket] = useState(null);
@@ -16,10 +16,11 @@ export default function TechPage() {
 
     const currentLevel = user.role ? user.role.replace('ATENDENTE_', '') : 'N1';
 
-    const updateTickets = (updated) => {
-        setTickets(updated);
-        localStorage.setItem('app_tickets', JSON.stringify(updated));
-    };
+    useEffect(() => {
+        ticketService.getTickets()
+            .then(setTickets)
+            .catch((requestError) => setError(requestError.message));
+    }, []);
 
     const getNextLevel = (level) => {
         if (level === 'N1') return 'N2';
@@ -46,25 +47,29 @@ export default function TechPage() {
         setSolutionText('');
     };
 
-    const handleConfirmResolve = () => {
+    const handleConfirmResolve = async () => {
         if (!solutionText.trim()) return alert('Escreva o relatório da solução técnica.');
 
-        const updated = tickets.map(t => 
-            t.id === selectedTicket.id ? { ...t, status: 'FECHADO', solucao: solutionText } : t
-        );
-        updateTickets(updated);
-        closeModal();
+        try {
+            const updatedTicket = await ticketService.updateTicket(selectedTicket.id, { status: 'FECHADO', solucao: solutionText });
+            setTickets((currentTickets) => currentTickets.map((ticket) => ticket.id === updatedTicket.id ? updatedTicket : ticket));
+            closeModal();
+        } catch (requestError) {
+            setError(requestError.message);
+        }
     };
 
-    const handleConfirmTransfer = () => {
+    const handleConfirmTransfer = async () => {
         if (!targetLevel) return;
 
-        const updated = tickets.map(t => 
-            t.id === selectedTicket.id ? { ...t, nivel: targetLevel } : t
-        );
-        updateTickets(updated);
-        closeModal();
-        alert(`Chamado ${selectedTicket.id} transferido com sucesso para o Nível ${targetLevel}!`);
+        try {
+            const updatedTicket = await ticketService.updateTicket(selectedTicket.id, { nivel: targetLevel });
+            setTickets((currentTickets) => currentTickets.map((ticket) => ticket.id === updatedTicket.id ? updatedTicket : ticket));
+            closeModal();
+            alert(`Chamado ${selectedTicket.id} transferido com sucesso para o Nível ${targetLevel}!`);
+        } catch (requestError) {
+            setError(requestError.message);
+        }
     };
 
     const abertosCount = tickets.filter(t => t.nivel === currentLevel && t.status === 'ABERTO').length;
@@ -76,6 +81,7 @@ export default function TechPage() {
     return (
         <div style={{ padding: '2rem', background: '#f4f6f9', minHeight: '100vh', color: '#333' }}>
             <div style={{ maxWidth: '1000px', margin: '0 auto', background: '#fff', padding: '2rem', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
+            {error && <p style={{ color: '#b91c1c' }}>{error}</p>}
             
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div>
@@ -160,7 +166,18 @@ export default function TechPage() {
                         </p>
                     )}
 
-                    <small style={{ color: '#666', display: 'block', marginBottom: '1rem' }}>Solicitante: {t.solicitante} | Anexo: {t.anexo}</small>
+                    <small style={{ color: '#666', display: 'block', marginBottom: '1rem' }}>
+                        Solicitante: {t.solicitante} | Anexo:{' '}
+                        {t.anexo ? (
+                            <button
+                                type="button"
+                                onClick={() => ticketService.openAttachment(t.id).catch((requestError) => setError(requestError.message))}
+                                style={{ border: 'none', background: 'none', padding: 0, color: '#38bdf8', cursor: 'pointer' }}
+                            >
+                                Abrir anexo
+                            </button>
+                        ) : 'Nenhum'}
+                    </small>
 
                     {t.status !== 'FECHADO' && (
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', borderTop: '1px solid #eee', paddingTop: '0.75rem' }}>

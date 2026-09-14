@@ -1,18 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/authService';
 
 export default function AdminPage() {
     const navigate = useNavigate();
 
-    const [users, setUsers] = useState(() => {
-    return JSON.parse(localStorage.getItem('app_users') || '[]');
-    });
+    const [users, setUsers] = useState([]);
 
-    const [formData, setFormData] = useState({ nome: '', email: '', senha: '', perfil: 'USUARIO_COMUM' });
+    const [formData, setFormData] = useState({ nome: '', email: '', senha: '', setor: '', cargo: '', perfil: 'USUARIO_COMUM' });
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
-    const handleRegister = (e) => {
+    const apiUrl = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+    const authHeaders = () => ({
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+    });
+
+    useEffect(() => {
+        fetch(`${apiUrl}/usuarios`, { headers: authHeaders() })
+            .then(async (response) => {
+                const body = await response.json().catch(() => null);
+                if (!response.ok) throw new Error(body?.message || body?.error || `Erro HTTP ${response.status}`);
+                return body;
+            })
+            .then(setUsers)
+            .catch((requestError) => setError(requestError.message));
+    }, [apiUrl]);
+
+    const handleRegister = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -22,15 +38,30 @@ export default function AdminPage() {
         return;
     }
 
-    const updatedUsers = [...users, { ...formData, id: Date.now() }];
-    setUsers(updatedUsers);
-    localStorage.setItem('app_users', JSON.stringify(updatedUsers));
-    setSuccess('Usuário cadastrado com sucesso!');
-    setFormData({ nome: '', email: '', senha: '', perfil: 'USUARIO_COMUM' });
+    try {
+        const response = await fetch(`${apiUrl}/usuarios/cadastrar`, {
+            method: 'POST',
+            headers: authHeaders(),
+            body: JSON.stringify({
+                email: formData.email,
+                senha: formData.senha,
+                setor: formData.setor,
+                cargo: formData.cargo,
+                perfil: formData.perfil
+            })
+        });
+        const body = await response.json().catch(() => null);
+        if (!response.ok) throw new Error(body?.message || body?.error || `Erro HTTP ${response.status}`);
+        setUsers((currentUsers) => [...currentUsers, body]);
+        setSuccess('Usuário cadastrado com sucesso! Um e-mail de confirmação foi enviado.');
+        setFormData({ nome: '', email: '', senha: '', setor: '', cargo: '', perfil: 'USUARIO_COMUM' });
+    } catch (requestError) {
+        setError(requestError.message);
+    }
     };
 
     const handleLogout = () => {
-    localStorage.clear();
+    authService.logout();
     navigate('/');
     };
 
@@ -50,6 +81,8 @@ export default function AdminPage() {
             <input type="text" placeholder="Nome Completo" value={formData.nome} onChange={e => setFormData({ ...formData, nome: e.target.value })} required style={{ padding: '0.5rem' }} />
             <input type="email" placeholder="email@helpdeskcand.com" value={formData.email} onChange={e => setFormData({ ...formData, email: e.target.value })} required style={{ padding: '0.5rem' }} />
             <input type="password" placeholder="Senha" value={formData.senha} onChange={e => setFormData({ ...formData, senha: e.target.value })} required style={{ padding: '0.5rem' }} />
+            <input type="text" placeholder="Setor" value={formData.setor} onChange={e => setFormData({ ...formData, setor: e.target.value })} required style={{ padding: '0.5rem' }} />
+            <input type="text" placeholder="Cargo" value={formData.cargo} onChange={e => setFormData({ ...formData, cargo: e.target.value })} required style={{ padding: '0.5rem' }} />
             <select value={formData.perfil} onChange={e => setFormData({ ...formData, perfil: e.target.value })} style={{ padding: '0.5rem' }}>
             <option value="USUARIO_COMUM">Usuário Comum</option>
             <option value="ATENDENTE_N1">Atendente N1</option>
@@ -72,7 +105,7 @@ export default function AdminPage() {
             <tbody>
             {users.map(u => (
                 <tr key={u.id} style={{ borderBottom: '1px solid #ddd' }}>
-                <td style={{ padding: '0.5rem' }}>{u.nome}</td>
+                <td style={{ padding: '0.5rem' }}>{u.nome || u.email}</td>
                 <td style={{ padding: '0.5rem' }}>{u.email}</td>
                 <td style={{ padding: '0.5rem' }}>{u.perfil}</td>
                 </tr>

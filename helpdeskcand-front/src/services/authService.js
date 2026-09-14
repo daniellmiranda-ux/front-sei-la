@@ -6,28 +6,51 @@ const ROLES = {
     ATENDENTE_N3: 'ATENDENTE_N3'
 };
 
+const API_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
+
+const parseResponse = async (response) => {
+    const body = await response.json().catch(() => null);
+    if (!response.ok) {
+        throw new Error(body?.message || body?.error || `Erro HTTP ${response.status}`);
+    }
+    return body;
+};
+
 export const authService = {
     login: async (email, password, selectedRole) => {
     if (!email.endsWith('@helpdeskcand.com')) {
         throw new Error('RN01: Acesso permitido apenas para e-mails corporativos (@helpdeskcand.com).');
     }
 
-    if (!password || password.length < 6) {
-        throw new Error('A senha deve conter no mínimo 6 caracteres.');
+    if (!password) {
+        throw new Error('Informe sua senha.');
     }
 
     if (!selectedRole || !Object.values(ROLES).includes(selectedRole)) {
         throw new Error('Selecione um perfil de acesso válido.');
     }
 
-    const user = {
-      id: Math.floor(Math.random() * 1000) + 1,
-        name: email.split('@')[0].replace('.', ' ').toUpperCase(),
-        email,
-        role: selectedRole
-    };
+    const response = await fetch(`${API_URL}/usuarios/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha: password })
+    });
+    const result = await parseResponse(response);
+    const token = result?.token || result?.accessToken || result?.jwt;
 
-    const token = `hd-jwt-token-${Date.now()}`;
+    if (!token) {
+        throw new Error('O backend não retornou um token de autenticação.');
+    }
+
+    const backendUser = result?.usuario || result?.user || result?.utilizador || {};
+    const user = {
+        ...backendUser,
+        id: backendUser.id || result?.usuarioId,
+        name: backendUser.nome || backendUser.name || email.split('@')[0].replace('.', ' ').toUpperCase(),
+        email: backendUser.email || email,
+        role: backendUser.role || backendUser.perfil || selectedRole,
+        emailConfirmed: backendUser.emailConfirmed ?? backendUser.emailConfirmado ?? true
+    };
 
     localStorage.setItem('user', JSON.stringify(user));
     localStorage.setItem('token', token);

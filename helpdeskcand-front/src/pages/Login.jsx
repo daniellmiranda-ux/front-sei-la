@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/authService';
 import './login.css';
 
 export default function Login() {
@@ -9,23 +10,16 @@ export default function Login() {
     const [cargo, setCargo] = useState('');
     const [error, setError] = useState('');
 
-    const redirectByRole = (role, userEmail = email) => {
-        const userData = {
-            email: userEmail,
-            role: role,
-            token: 'jwt_mock_token_' + Date.now(),
-            emailConfirmed: true
-        };
+    const redirectByRole = (role) => {
+        const userData = authService.getCurrentUser();
+        const userRole = userData?.role || role;
 
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', userData.token);
-
-        if (role === 'SETOR_ADMINISTRATIVO') navigate('/admin');
-        else if (role === 'USUARIO_COMUM') navigate('/usuario');
+        if (userRole === 'SETOR_ADMINISTRATIVO') navigate('/admin');
+        else if (userRole === 'USUARIO_COMUM') navigate('/usuario');
         else navigate('/atendimento');
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
 
@@ -39,7 +33,12 @@ export default function Login() {
             return;
         }
 
-        redirectByRole(cargo, email);
+        try {
+            await authService.login(email, password, cargo);
+            redirectByRole(cargo, email);
+        } catch (loginError) {
+            setError(loginError.message);
+        }
     };
 
     return (

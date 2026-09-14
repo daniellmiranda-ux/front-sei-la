@@ -1,18 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ticketService } from '../services/ticketService';
 
 export default function UserPage() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user')) || {};
 
-    const [tickets, setTickets] = useState(() => {
-        const savedTickets = JSON.parse(localStorage.getItem('app_tickets') || '[]');
-        return savedTickets.filter(t => t.solicitante === user.email);
-    });
+    const [tickets, setTickets] = useState([]);
+    const [error, setError] = useState('');
 
     const [formData, setFormData] = useState({ categoria: 'HARDWARE', urgencia: 'NORMAL', descricao: '' });
     const [file, setFile] = useState(null);
     const [fileError, setFileError] = useState('');
+
+    useEffect(() => {
+        ticketService.getTickets()
+            .then((savedTickets) => setTickets(savedTickets.filter((ticket) => ticket.solicitante === user.email)))
+            .catch((requestError) => setError(requestError.message));
+    }, [user.email]);
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
@@ -29,33 +34,27 @@ export default function UserPage() {
         }
     };
 
-    const handleCreateTicket = (e) => {
+    const handleCreateTicket = async (e) => {
         e.preventDefault();
         if (!user.emailConfirmed) {
             alert('Bloqueado: Seu e-mail precisa estar confirmado para abrir chamados.');
             return;
         }
 
-        const allTickets = JSON.parse(localStorage.getItem('app_tickets') || '[]');
-        const protocolNumber = String(allTickets.length + 1).padStart(4, '0');
-        const newTicket = {
-            id: `HD-2026-${protocolNumber}`,
-            solicitante: user.email,
+        try {
+            const newTicket = await ticketService.createTicket({
             categoria: formData.categoria,
             urgencia: formData.urgencia,
-            descricao: formData.descricao,
-            anexo: file ? file.name : 'Nenhum',
-            status: 'ABERTO',
-            nivel: 'N1',
-            slaLimit: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
-            createdAt: new Date().toLocaleDateString('pt-BR')
-        };
-
-        const updated = [...allTickets, newTicket];
-        localStorage.setItem('app_tickets', JSON.stringify(updated));
-        setTickets(updated.filter(t => t.solicitante === user.email));
-        setFormData({ categoria: 'HARDWARE', urgencia: 'NORMAL', descricao: '' });
-        setFile(null);
+            descricao: formData.descricao
+            });
+            if (file && newTicket.id) await ticketService.uploadAttachment(newTicket.id, file);
+            setTickets((currentTickets) => [newTicket, ...currentTickets]);
+            setFormData({ categoria: 'HARDWARE', urgencia: 'NORMAL', descricao: '' });
+            setFile(null);
+            setError('');
+        } catch (requestError) {
+            setError(requestError.message);
+        }
     };
 
     return (
@@ -95,11 +94,12 @@ export default function UserPage() {
                     ABRIR NOVO CHAMADO
                 </h3>
 
+                {error && <p style={{ color: '#fca5a5' }}>{error}</p>}
+
                 <form onSubmit={handleCreateTicket} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2.5rem' }}>
                     <select value={formData.categoria} onChange={e => setFormData({ ...formData, categoria: e.target.value })} style={{ padding: '0.8rem', background: '#0b101b', color: '#fff', border: '1px solid #222f43', borderRadius: '6px', outline: 'none' }}>
                         <option value="HARDWARE">HARDWARE</option>
                         <option value="SOFTWARE">SOFTWARE</option>
-                        <option value="REDES">REDES</option>
                     </select>
 
                     <select value={formData.urgencia} onChange={e => setFormData({ ...formData, urgencia: e.target.value })} style={{ padding: '0.8rem', background: '#0b101b', color: '#fff', border: '1px solid #222f43', borderRadius: '6px', outline: 'none' }}>
