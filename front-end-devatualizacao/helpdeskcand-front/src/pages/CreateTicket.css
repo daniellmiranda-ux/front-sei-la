@@ -1,0 +1,61 @@
+.card h1, 
+.card h2 {
+    color: #00d2ff !important;
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.5px !important;
+    text-shadow: 0 0 12px rgba(0, 210, 255, 0.4) !important;
+    margin-bottom: 1.5rem !important;
+}
+
+.card select, 
+.card textarea, 
+.card input[type="text"], 
+.card input[type="file"] {
+  background-color: #0f172a !important; /* Azul escuro corporativo */
+    color: #f8fafc !important;
+    border: 1px solid #1a2a4a !important;
+    border-radius: 8px !important;
+    padding: 0.75rem 1rem !important;
+    transition: all 0.25s ease-in-out !important;
+}
+
+.card select:focus, 
+.card textarea:focus, 
+.card input:focus {
+    border-color: #00d2ff !important;
+    box-shadow: 0 0 10px rgba(0, 210, 255, 0.25) !important;
+    background-color: #141e33 !important;
+}
+
+.card select option {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+}
+
+.card table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    background-color: #0f172a !important;
+    border: 1px solid #1a2a4a !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    margin-top: 1rem !important;
+}
+
+.card th {
+  background-color: #141e33 !important; /* Cabeçalho azul um pouco mais destacado */
+    color: #00d2ff !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    font-size: 0.8rem !important;
+    padding: 0.85rem 1rem !important;
+    border-bottom: 1px solid #1a2a4a !important;
+}
+
+.card td {
+    background-color: #0f172a !important;
+    color: #e2e8f0 !important;
+    padding: 0.85rem 1rem !important;
+    border-bottom: 1px solid #1a2a4a !important;
+}

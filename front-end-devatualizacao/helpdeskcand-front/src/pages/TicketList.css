@@ -1,0 +1,45 @@
+.metrics-container, 
+div[style*="grid"] {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin: 1.5rem 0 2rem;
+}
+
+.metric-card, 
+div[style*="border"] {
+    background-color: var(--bg-input);
+    border-radius: 10px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+
+.metric-card:nth-child(1) {
+    border: 1px solid rgba(0, 210, 255, 0.4);
+    box-shadow: 0 0 15px rgba(0, 210, 255, 0.1);
+}
+
+
+.metric-card:nth-child(2) {
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.1);
+}
+
+
+.metric-card:nth-child(3) {
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.1);
+}
+
+
+div[style*="dashed"], 
+.empty-box {
+    border: 1px dashed var(--border-color) !important;
+    background-color: rgba(13, 19, 34, 0.5) !important;
+    color: var(--text-muted) !important;
+    border-radius: 8px !important;
+    padding: 2.5rem !important;
+    text-align: center !important;
+}

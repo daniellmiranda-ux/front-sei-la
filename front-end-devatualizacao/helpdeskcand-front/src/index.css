@@ -1,0 +1,120 @@
+:root {
+  --bg-main: #070a11;
+  --bg-card: #121824;
+  --bg-input: #0d1322;
+  --border-color: #1a2a4a;
+  --border-glow: rgba(0, 210, 255, 0.25);
+  --accent-cyan: #00d2ff;
+  --accent-blue: #2563eb;
+  --text-primary: #ffffff;
+  --text-muted: #8b949e;
+  --success: #10b981;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Padronização de Containers */
+.page-container, 
+div[class*="container"] {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  background-color: var(--bg-main);
+}
+
+/* Card Principal Glassmorphism */
+.card, 
+div[style*="background"], 
+main {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-glow) !important;
+  border-radius: 14px !important;
+  padding: 2.5rem !important;
+  box-shadow: 0 0 35px rgba(0, 102, 255, 0.15) !important;
+  color: var(--text-primary) !important;
+}
+
+/* --- ESTILOS FORÇADOS PARA A TELA DO USUÁRIO --- */
+
+/* Título em Ciano Neon com Brilho */
+h1, h2 {
+  color: var(--accent-cyan) !important;
+  font-size: 1.6rem !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.5px !important;
+  text-shadow: 0 0 12px rgba(0, 210, 255, 0.4) !important;
+  margin-bottom: 1.5rem !important;
+}
+
+/* Remoção do Fundo Branco dos Selects, Textareas e Inputs */
+select, 
+textarea, 
+input:not([type="button"]):not([type="submit"]):not([type="checkbox"]) {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem !important;
+  outline: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+select:focus, 
+textarea:focus, 
+input:focus {
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 0 10px rgba(0, 210, 255, 0.3) !important;
+}
+
+/* Opções do Select */
+select option {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Tabela Meus Chamados sem Fundo Branco */
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background-color: var(--bg-input) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  margin-top: 1rem !important;
+}
+
+th {
+  background-color: #090e18 !important;
+  color: var(--accent-cyan) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  font-size: 0.85rem !important;
+  padding: 0.85rem 1rem !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  text-align: left !important;
+}
+
+td {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  padding: 0.85rem 1rem !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}

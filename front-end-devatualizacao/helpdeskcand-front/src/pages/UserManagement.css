@@ -1,0 +1,83 @@
+.admin-header, 
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.admin-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+
+button[class*="sair"], 
+.btn-logout,
+.admin-header button {
+    background: rgba(239, 68, 68, 0.15) !important;
+    color: var(--danger) !important;
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;
+    padding: 0.5rem 1.25rem !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+button[class*="sair"]:hover, 
+.btn-logout:hover,
+.admin-header button:hover {
+    background: var(--danger) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5) !important;
+}
+
+
+input, select, textarea {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-color) !important;
+    color: #ffffff !important;
+    border-radius: 6px !important;
+    padding: 0.75rem 1rem !important;
+    outline: none !important;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--accent-cyan) !important;
+    box-shadow: 0 0 8px rgba(0, 210, 255, 0.3) !important;
+}
+
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5rem;
+    background-color: var(--bg-input);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+th {
+    background-color: #0d1322;
+    color: var(--text-muted);
+    text-align: left;
+    padding: 0.85rem 1rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border-color);
+}
+
+td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: #ffffff;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
