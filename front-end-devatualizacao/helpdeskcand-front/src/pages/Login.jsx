@@ -1,146 +1,97 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './login.css';
 
 export default function Login() {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [cargo, setCargo] = useState('');
+    const [senha, setSenha] = useState('');
     const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
-    const redirectByRole = (role, userEmail = email) => {
-        const userData = {
-            email: userEmail,
-            role: role,
-            token: 'jwt_mock_token_' + Date.now(),
-            emailConfirmed: true
-        };
-
-        localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', userData.token);
-
-        if (role === 'SETOR_ADMINISTRATIVO') navigate('/admin');
-        else if (role === 'USUARIO_COMUM') navigate('/usuario');
-        else navigate('/atendimento');
-    };
-
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
+        setLoading(true);
 
-        if (!cargo) {
-            setError('A seleção do cargo é obrigatória para prosseguir.');
-            return;
+        try {
+            const response = await fetch('http://localhost:8080/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, senha })
+            });
+
+            if (!response.ok) {
+                throw new Error('E-mail ou senha inválidos.');
+            }
+
+            const data = await response.json();
+
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('user', JSON.stringify(data.user || data));
+
+            const userRole = data.user?.role || data.role || '';
+
+            if (userRole.startsWith('ATENDENTE_') || userRole === 'SETOR_ADMINISTRATIVO') {
+                navigate('/atendimento');
+            } else {
+                navigate('/usuario');
+            }
+        } catch (err) {
+            setError(err.message || 'Erro ao realizar login.');
+        } finally {
+            setLoading(false);
         }
-
-        if (!email.endsWith('@helpdeskcand.com')) {
-            setError('O e-mail deve pertencer ao domínio @helpdeskcand.com');
-            return;
-        }
-
-        redirectByRole(cargo, email);
     };
 
     return (
-        <div className="login-container">
-            <div className="login-card">
-                <h2 style={{ 
-                    color: '#00e5ff', 
-                    fontSize: '2.8rem', 
-                    fontWeight: '900', 
-                    fontFamily: "'Montserrat', 'Segoe UI', system-ui, sans-serif",
-                    letterSpacing: '3px', 
-                    textTransform: 'uppercase', 
-                    textShadow: '0 0 25px rgba(0, 229, 255, 0.75), 0 0 45px rgba(0, 229, 255, 0.35)', 
-                    margin: '0 0 0.5rem 0',
-                    textAlign: 'center'
-                }}>
-                    HelpDesk CAnd
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', background: '#090d16', fontFamily: 'sans-serif', color: '#fff' }}>
+            <div style={{ width: '100%', maxWidth: '400px', background: '#121824', padding: '2.5rem', borderRadius: '12px', border: '1px solid #1a2332', boxShadow: '0 4px 20px rgba(0,0,0,0.6)' }}>
+                <h2 style={{ margin: '0 0 1.5rem 0', color: '#00e5ff', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '800', textShadow: '0 0 12px rgba(0, 229, 255, 0.4)' }}>
+                    SISTEMA DE CHAMADOS
                 </h2>
-                
-                <p style={{ margin: '0 0 1.5rem 0', opacity: 0.85, textAlign: 'center' }}>
-                    Acesse o sistema com suas credenciais de usuário:
-                </p>
 
-                {error && <p className="error-message">{error}</p>}
+                {error && (
+                    <div style={{ background: '#3b1219', border: '1px solid #7f1d1d', color: '#fca5a5', padding: '0.75rem', borderRadius: '6px', marginBottom: '1.2rem', fontSize: '0.85rem', textAlign: 'center' }}>
+                        {error}
+                    </div>
+                )}
 
-                <form onSubmit={handleLogin}>
-                    <div className="form-group">
-                        <label style={{ 
-                            color: '#38bdf8', 
-                            fontWeight: '700', 
-                            letterSpacing: '0.5px', 
-                            textTransform: 'uppercase', 
-                            display: 'block', 
-                            marginBottom: '0.4rem' 
-                        }}>
-                            E-mail Corporativo
+                <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: '#94a3b8', fontWeight: '600' }}>
+                            E-mail
                         </label>
                         <input
                             type="email"
-                            placeholder="seu.email@helpdeskcand.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             required
+                            placeholder="seu.email@exemplo.com"
+                            style={{ width: '100%', padding: '0.8rem', background: '#0b101b', color: '#fff', border: '1px solid #222f43', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label style={{ 
-                            color: '#38bdf8', 
-                            fontWeight: '700', 
-                            letterSpacing: '0.5px', 
-                            textTransform: 'uppercase', 
-                            display: 'block', 
-                            marginBottom: '0.4rem' 
-                        }}>
+                    <div>
+                        <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: '#94a3b8', fontWeight: '600' }}>
                             Senha
                         </label>
                         <input
                             type="password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            value={senha}
+                            onChange={(e) => setSenha(e.target.value)}
                             required
+                            placeholder="••••••••"
+                            style={{ width: '100%', padding: '0.8rem', background: '#0b101b', color: '#fff', border: '1px solid #222f43', borderRadius: '6px', outline: 'none', boxSizing: 'border-box' }}
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label style={{ 
-                            color: '#38bdf8', 
-                            fontWeight: '700', 
-                            letterSpacing: '0.5px', 
-                            textTransform: 'uppercase', 
-                            display: 'block', 
-                            marginBottom: '0.4rem' 
-                        }}>
-                            Selecione seu Cargo
-                        </label>
-                        <select
-                            value={cargo}
-                            onChange={(e) => setCargo(e.target.value)}
-                            required
-                            style={{ 
-                                width: '100%', 
-                                padding: '0.6rem', 
-                                borderRadius: '4px', 
-                                border: '1px solid #222f43', 
-                                backgroundColor: '#0b101b', 
-                                color: cargo ? '#fff' : '#94a3b8', 
-                                outline: 'none' 
-                            }}
-                        >
-                            <option value="" disabled hidden>Selecione seu cargo</option>
-                            <option value="SETOR_ADMINISTRATIVO">Setor Administrativo</option>
-                            <option value="ATENDENTE_N1">Atendente N1</option>
-                            <option value="ATENDENTE_N2">Atendente N2</option>
-                            <option value="ATENDENTE_N3">Atendente N3</option>
-                            <option value="USUARIO_COMUM">Usuário Comum</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" className="login-btn">Entrar</button>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        style={{ width: '100%', padding: '0.85rem', background: '#00e5ff', color: '#090d16', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '1rem', marginTop: '0.5rem', boxShadow: '0 0 12px rgba(0, 229, 255, 0.3)' }}
+                    >
+                        {loading ? 'Entrando...' : 'Entrar'}
+                    </button>
                 </form>
             </div>
         </div>

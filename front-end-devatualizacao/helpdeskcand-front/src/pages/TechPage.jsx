@@ -1,25 +1,70 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function TechPage() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user')) || {};
 
-    const [tickets, setTickets] = useState(() => {
-        return JSON.parse(localStorage.getItem('app_tickets') || '[]');
-    });
-
+    const [tickets, setTickets] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState('ABERTO');
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [modalType, setModalType] = useState(null);
     const [solutionText, setSolutionText] = useState('');
 
     const currentLevel = user.role ? user.role.replace('ATENDENTE_', '') : 'N1';
+    const API_URL = 'http://localhost:8080/api/chamados';
 
-    const updateTickets = (updated) => {
-        setTickets(updated);
-        localStorage.setItem('app_tickets', JSON.stringify(updated));
+    const getHeaders = () => {
+        const token = localStorage.getItem('token');
+        return {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
     };
+
+    const loadTickets = useCallback(async () => {
+        try {
+            const response = await fetch(API_URL, {
+                headers: getHeaders()
+            });
+            if (!response.ok) throw new Error('Erro ao buscar chamados');
+            const data = await response.json();
+            setTickets(data);
+        } catch (error) {
+            console.error('Erro ao buscar chamados do MySQL:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [API_URL]);
+
+    useEffect(() => {
+        let active = true;
+
+        fetch(API_URL, {
+            headers: getHeaders()
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('Erro na requisição');
+                return res.json();
+            })
+            .then(data => {
+                if (active) {
+                    setTickets(data);
+                    setLoading(false);
+                }
+            })
+            .catch(error => {
+                if (active) {
+                    console.error('Erro ao buscar chamados do MySQL:', error);
+                    setLoading(false);
+                }
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [API_URL]);
 
     const getNextLevel = (level) => {
         if (level === 'N1') return 'N2';
@@ -46,32 +91,66 @@ export default function TechPage() {
         setSolutionText('');
     };
 
-    const handleConfirmResolve = () => {
+    const handleConfirmResolve = async () => {
         if (!solutionText.trim()) return alert('Escreva o relatório da solução técnica.');
 
-        const updated = tickets.map(t => 
-            t.id === selectedTicket.id ? { ...t, status: 'FECHADO', solucao: solutionText } : t
-        );
-        updateTickets(updated);
-        closeModal();
+        try {
+            const atendenteId = user.id || 1;
+            const url = `${API_URL}/${selectedTicket.id}/atender?atendenteId=${atendenteId}&status=FECHADO`;
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    ...getHeaders(),
+                    'Content-Type': 'text/plain'
+                },
+                body: solutionText
+            });
+
+            if (!response.ok) throw new Error('Erro ao atualizar chamado');
+
+            await loadTickets();
+            closeModal();
+        } catch (error) {
+            console.error('Erro ao resolver chamado:', error);
+            alert('Erro ao atualizar o chamado no backend.');
+        }
     };
 
-    const handleConfirmTransfer = () => {
+    const handleConfirmTransfer = async () => {
         if (!targetLevel) return;
 
-        const updated = tickets.map(t => 
-            t.id === selectedTicket.id ? { ...t, nivel: targetLevel } : t
-        );
-        updateTickets(updated);
-        closeModal();
-        alert(`Chamado ${selectedTicket.id} transferido com sucesso para o Nível ${targetLevel}!`);
+        try {
+            const novoNivel = `ATENDENTE_${targetLevel}`;
+            const url = `${API_URL}/${selectedTicket.id}/escalonar?novoNivel=${novoNivel}`;
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: getHeaders()
+            });
+
+            if (!response.ok) throw new Error('Erro ao transferir');
+
+            await loadTickets();
+            closeModal();
+            alert(`Chamado ${selectedTicket.id} transferido com sucesso para o Nível ${targetLevel}!`);
+        } catch (error) {
+            console.error('Erro ao transferir chamado:', error);
+            alert('Erro ao transferir o chamado no backend.');
+        }
     };
 
-    const abertosCount = tickets.filter(t => t.nivel === currentLevel && t.status === 'ABERTO').length;
-    const resolvidosCount = tickets.filter(t => t.nivel === currentLevel && t.status === 'FECHADO').length;
-    const atrasadosCount = tickets.filter(t => t.nivel === currentLevel && t.status === 'ATRASADO').length;
+    const getTicketLevel = (ticket) => {
+        if (!ticket) return '';
+        const levelStr = ticket.nivelAtendimento || ticket.nivel || 'N1';
+        return levelStr.replace('ATENDENTE_', '');
+    };
 
-    const filteredTickets = tickets.filter(t => t.nivel === currentLevel && t.status === activeFilter);
+    const abertosCount = tickets.filter(t => getTicketLevel(t) === currentLevel && t.status === 'ABERTO').length;
+    const resolvidosCount = tickets.filter(t => getTicketLevel(t) === currentLevel && t.status === 'FECHADO').length;
+    const atrasadosCount = tickets.filter(t => getTicketLevel(t) === currentLevel && t.status === 'ATRASADO').length;
+
+    const filteredTickets = tickets.filter(t => getTicketLevel(t) === currentLevel && t.status === activeFilter);
 
     return (
         <div style={{ padding: '2rem', background: '#f4f6f9', minHeight: '100vh', color: '#333' }}>
@@ -138,7 +217,9 @@ export default function TechPage() {
             <h3 style={{ marginBottom: '1rem' }}>Fila de Chamados - Nível {currentLevel} ({activeFilter})</h3>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {filteredTickets.length === 0 ? (
+                {loading ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: '#666' }}>Buscando chamados do banco de dados...</div>
+                ) : filteredTickets.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', background: '#f8f9fa', borderRadius: '6px', border: '1px dashed #ccc' }}>
                     <p style={{ color: '#666', margin: 0 }}>Nenhum chamado <strong>{activeFilter.toLowerCase()}</strong> encontrado no Nível {currentLevel}.</p>
                 </div>
@@ -146,7 +227,7 @@ export default function TechPage() {
                 filteredTickets.map(t => (
                     <div key={t.id} style={{ border: '1px solid #ddd', padding: '1.2rem', borderRadius: '6px', background: '#fafafa', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <strong>{t.id} - [{t.categoria}]</strong>
+                        <strong>PROT-{t.id} - [{t.categoria || 'GERAL'}]</strong>
                         <span style={{ padding: '0.25rem 0.6rem', borderRadius: '4px', background: t.status === 'FECHADO' ? '#d4edda' : '#fff3cd', fontSize: '0.85rem' }}>
                         Status: <strong>{t.status}</strong>
                         </span>
@@ -160,7 +241,9 @@ export default function TechPage() {
                         </p>
                     )}
 
-                    <small style={{ color: '#666', display: 'block', marginBottom: '1rem' }}>Solicitante: {t.solicitante} | Anexo: {t.anexo}</small>
+                    <small style={{ color: '#666', display: 'block', marginBottom: '1rem' }}>
+                        Solicitante: {t.solicitante || t.usuario?.nome || 'Usuário'} | Anexo: {t.anexo || 'Nenhum'}
+                    </small>
 
                     {t.status !== 'FECHADO' && (
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', borderTop: '1px solid #eee', paddingTop: '0.75rem' }}>
@@ -198,7 +281,7 @@ export default function TechPage() {
                     <>
                         <h3 style={{ marginTop: 0, color: '#111827' }}>Resolver Chamado</h3>
                         <p style={{ margin: '0.5rem 0 1rem 0', color: '#4b5563' }}>
-                        Protocolo: <strong style={{ color: '#d97706' }}>{selectedTicket.id}</strong>
+                        Protocolo: <strong style={{ color: '#d97706' }}>PROT-{selectedTicket.id}</strong>
                         </p>
 
                         <textarea 
@@ -231,7 +314,7 @@ export default function TechPage() {
                     <>
                         <h3 style={{ marginTop: 0 }}>Transferir Chamado</h3>
                         <p style={{ margin: '0.5rem 0 1rem 0' }}>
-                        Protocolo: <strong style={{ color: '#d97706' }}>{selectedTicket.id}</strong>
+                        Protocolo: <strong style={{ color: '#d97706' }}>PROT-{selectedTicket.id}</strong>
                         </p>
                         <p style={{ fontSize: '0.95rem', color: '#555' }}>
                         Deseja encaminhar este chamado do <strong>Nível {currentLevel}</strong> para o <strong>Nível {targetLevel}</strong>?

@@ -1,18 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function UserPage() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem('user')) || {};
 
-    const [tickets, setTickets] = useState(() => {
-        const savedTickets = JSON.parse(localStorage.getItem('app_tickets') || '[]');
-        return savedTickets.filter(t => t.solicitante === user.email);
-    });
-
+    const [tickets, setTickets] = useState([]);
     const [formData, setFormData] = useState({ categoria: 'HARDWARE', urgencia: 'NORMAL', descricao: '' });
     const [file, setFile] = useState(null);
     const [fileError, setFileError] = useState('');
+
+    const API_URL = 'http://localhost:8080/api/chamados';
+
+    const getHeaders = () => {
+        const token = localStorage.getItem('token');
+        return {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        };
+    };
+
+    const loadTickets = useCallback(async () => {
+        try {
+            const response = await fetch(API_URL, {
+                headers: getHeaders()
+            });
+            if (!response.ok) throw new Error('Erro ao buscar chamados');
+            const data = await response.json();
+            const userTickets = data.filter(t => t.solicitante === user.email || t.usuario?.email === user.email);
+            setTickets(userTickets);
+        } catch (error) {
+            console.error('Erro ao carregar chamados do MySQL:', error);
+        }
+    }, [API_URL, user.email]);
+
+    useEffect(() => {
+        let active = true;
+
+        fetch(API_URL, {
+            headers: getHeaders()
+        })
+            .then(res => {
+                if (!res.ok) throw new Error('Erro na requisição');
+                return res.json();
+            })
+            .then(data => {
+                if (active) {
+                    const userTickets = data.filter(t => t.solicitante === user.email || t.usuario?.email === user.email);
+                    setTickets(userTickets);
+                }
+            })
+            .catch(error => console.error('Erro ao buscar chamados:', error));
+
+        return () => {
+            active = false;
+        };
+    }, [API_URL, user.email]);
 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
@@ -29,33 +72,41 @@ export default function UserPage() {
         }
     };
 
-    const handleCreateTicket = (e) => {
+    const handleCreateTicket = async (e) => {
         e.preventDefault();
         if (!user.emailConfirmed) {
             alert('Bloqueado: Seu e-mail precisa estar confirmado para abrir chamados.');
             return;
         }
 
-        const allTickets = JSON.parse(localStorage.getItem('app_tickets') || '[]');
-        const protocolNumber = String(allTickets.length + 1).padStart(4, '0');
         const newTicket = {
-            id: `HD-2026-${protocolNumber}`,
             solicitante: user.email,
             categoria: formData.categoria,
             urgencia: formData.urgencia,
             descricao: formData.descricao,
             anexo: file ? file.name : 'Nenhum',
             status: 'ABERTO',
-            nivel: 'N1',
-            slaLimit: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
-            createdAt: new Date().toLocaleDateString('pt-BR')
+            nivelAtendimento: 'ATENDENTE_N1',
+            nivel: 'N1'
         };
 
-        const updated = [...allTickets, newTicket];
-        localStorage.setItem('app_tickets', JSON.stringify(updated));
-        setTickets(updated.filter(t => t.solicitante === user.email));
-        setFormData({ categoria: 'HARDWARE', urgencia: 'NORMAL', descricao: '' });
-        setFile(null);
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: getHeaders(),
+                body: JSON.stringify(newTicket)
+            });
+
+            if (!response.ok) throw new Error('Erro ao salvar no banco');
+
+            alert('Chamado criado com sucesso no MySQL!');
+            setFormData({ categoria: 'HARDWARE', urgencia: 'NORMAL', descricao: '' });
+            setFile(null);
+            await loadTickets();
+        } catch (error) {
+            console.error('Erro ao enviar chamado:', error);
+            alert('Erro ao registrar chamado no banco de dados.');
+        }
     };
 
     return (
@@ -187,10 +238,10 @@ export default function UserPage() {
                         ) : (
                             tickets.map(t => (
                                 <tr key={t.id} style={{ borderBottom: '1px solid #1e293b', fontSize: '0.9rem' }}>
-                                    <td style={{ padding: '0.85rem 1rem', color: '#fff', fontWeight: 'bold' }}>{t.id}</td>
+                                    <td style={{ padding: '0.85rem 1rem', color: '#fff', fontWeight: 'bold' }}>PROT-{t.id}</td>
                                     <td style={{ padding: '0.85rem 1rem', color: '#cbd5e1' }}>{t.categoria}</td>
                                     <td style={{ padding: '0.85rem 1rem', color: t.status === 'FECHADO' ? '#10b981' : '#f59e0b', fontWeight: 'bold' }}>{t.status}</td>
-                                    <td style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>{t.slaLimit}</td>
+                                    <td style={{ padding: '0.85rem 1rem', color: '#94a3b8' }}>{t.slaLimit || '24h'}</td>
                                 </tr>
                             ))
                         )}
